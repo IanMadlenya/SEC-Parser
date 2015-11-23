@@ -42,19 +42,40 @@ def get_url(cik):
 
 	cik = get_cik_no(soup)
 	acc = get_acc_no(soup)
+	if cik is None or acc is None:
+		return False
 
 	url = 'https://www.sec.gov/Archives/edgar/data/' + cik + '/' + acc + '/R'
 	for page in range(2, 10):
 		statement = url + str(page) + '.htm'
 		soup = BeautifulSoup(urllib.urlopen(statement).read(), 'lxml')
 
-		# print statement		
-		title = soup.find('th', class_='tl').get_text().lower()
-		if ('consolidated balance sheet'in title or 'consolidated statement of financial position' in title) and not 'parenthetical' in title:
+		# print statement
+		try:
+			title = soup.find('th', class_='tl').get_text().lower()
+		except AttributeError:
+			return False
+		
+		if is_balance_sheet(title):
 			return statement, 10**3 if 'thousand' in title else 10**6 if 'million' in title else 10**9
+
+def is_balance_sheet(title):
+	if 'parenthetical' in title:
+		return False
+
+	keywords = []
+	keywords.append('balance sheet')
+	keywords.append('financial position')
+	keywords.append('financial condition')
+	for word in keywords:
+		if word in title:
+			return True
+	return False
 
 def parse(ticker):
 	url = get_url(ticker)
+	if url is False:
+		raise ValueError('missing 10-k report')
 	soup = BeautifulSoup(urllib.urlopen(url[0]).read(), 'lxml')
 
 	all_entries = soup.find_all('tr', {'class':['re', 'ro', 'reu', 'rou', 'rh']})
@@ -63,14 +84,8 @@ def parse(ticker):
 		numbers = entry.find_all('td', {'class':['nump', 'num']})
 
 		if 'us-gaap_AssetsCurrent\'' in title:
-			for amount in numbers:
-				yield float(parse_amount(amount.get_text())) * url[1]
-				break
+			yield float(parse_amount(numbers[0].get_text())) * url[1]
 		elif 'us-gaap_LiabilitiesCurrent\'' in title:
-			for amount in numbers:
-				yield float(parse_amount(amount.get_text())) * url[1]
-				break
+			yield float(parse_amount(numbers[0].get_text())) * url[1]
 		elif 'us-gaap_PropertyPlantAndEquipmentNet\'' in title:
-			for amount in numbers:
-				yield float(parse_amount(amount.get_text())) * url[1]
-				break
+			yield (float(parse_amount(numbers[0].get_text())) - float(parse_amount(numbers[1].get_text()))) * url[1]
