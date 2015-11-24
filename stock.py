@@ -49,7 +49,6 @@ class Stock:
 			a = parse_statement(self.income_statement, ['us-gaap_OperatingIncomeLoss\'', 'us-gaap_IncomeTaxExpenseBenefit\'', 'us-gaap_IncomeLossFromContinuingOperationsBeforeIncomeTaxes'], soup[0][1])
 			b = parse_statement(self.balance_sheet, ['us-gaap_AssetsCurrent\'', 'us-gaap_LiabilitiesCurrent\''], soup[1][1])
 			c = parse_statement(self.cash_flow_statement, ['us-gaap_PaymentsToAcquirePropertyPlantAndEquipment\''], soup[2][1])
-			d = self.get_ebitda() - a[0]
 		except ValueError:
 			return 'missing 10-k report'
 		except TypeError:
@@ -60,6 +59,6 @@ class Stock:
 			# print b
 			# print c
 			# print d
-			return a[0] * (1 - a[1] / a[2]) + d - (b[0] - b[1]) - abs(c[0])
+			return a[0] * (1 - a[1] / a[2]) + (self.get_ebitda() - a[0]) - (b[0] - b[1]) - abs(c[0])
 		except TypeError:
 			return 'missing data'
