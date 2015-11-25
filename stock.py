@@ -58,7 +58,7 @@ class Stock:
 			# print a
 			# print b
 			# print c
-			# print d
 			return a[0] * (1 - a[1] / a[2]) + (self.get_ebitda() - a[0]) - (b[0] - b[1]) - abs(c[0])
 		except TypeError:
-			return 'missing data'
+			return None
+			# return 'missing data'

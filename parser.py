@@ -8,19 +8,26 @@ def parse_statement(statement, query, multiplier):
 	values = [None] * len(query)
 	all_entries = statement.find_all('tr', {'class':['re', 'ro', 'reu', 'rou', 'rh']})
 	for entry in all_entries:
-		title = entry.find('a', class_='a').get('onclick')
-		numbers = entry.find_all('td', {'class':['nump', 'num']})
+		if None not in values:
+			break
 
+		title = entry.find('a', class_='a')
+		if title is None:
+			continue
+		else:
+			title = title.get('onclick')
+
+		numbers = entry.find_all('td', {'class':['nump', 'num']})
 		for item in range(0, len(query)):
 			if query[item] in title:
-				values[item] = float(parse_amount(numbers[0].get_text())) * multiplier
+				values[item] = 0 if not numbers else float(parse_amount(numbers[0].get_text())) * multiplier
 				break
 
 	return values
 
 def get_statements(ticker):
 	url = get_url(ticker)
-	if url is False:
+	if url is None:
 		raise ValueError('missing 10-k report')
 
 	soup = [None] * 3
@@ -39,11 +46,13 @@ def get_url(ticker):
 	cik = get_cik_no(soup)
 	acc = get_acc_no(soup)
 	if cik is None or acc is None:
-		return False
+		return None # missing 10-k report
 
 	report = [None] * 3
 	url = 'https://www.sec.gov/Archives/edgar/data/' + cik + '/' + acc + '/R'
-	for page in range(2, 10):
+	for page in range(2, 13):
+		if None not in report:
+			break
 		statement = url + str(page) + '.htm'
 		soup = BeautifulSoup(urllib.urlopen(statement).read(), 'lxml')
 
@@ -51,12 +60,12 @@ def get_url(ticker):
 		try:
 			title = soup.find('th', class_='tl').get_text().lower()
 		except AttributeError:
-			return False
+			return None # missing interactive data
 
-		if is_income_statement(title):
+		if report[0] is None and is_income_statement(title):
 			title = re.compile(',').split(title)
 			for phrase in title:
-				if 'share' in phrase.lower():
+				if len(title) is not 1 and 'share' in phrase.lower():
 					continue
 				if 'thousand' in phrase.lower():
 					report[0] = (statement, 10**3)
@@ -64,28 +73,31 @@ def get_url(ticker):
 					report[0] = (statement, 10**6)
 				elif 'billion' in phrase.lower():
 					report[0] = (statement, 10**9)
-		if is_balance_sheet(title):
+				else:
+					report[0] = (statement, 1)
+		if report[1] is None and is_balance_sheet(title):
 			report[1] = (statement, 10**3 if 'thousand' in title else 10**6 if 'million' in title else 10**9)
-		if is_cash_flow_statement(title):
+		if report[2] is None and is_cash_flow_statement(title):
 			report[2] = (statement, 10**3 if 'thousand' in title else 10**6 if 'million' in title else 10**9)
 
 	return report
 
 def get_cik_no(soup):
-	span = soup.find_all('span', class_='companyName')
-	for i in span:
-		cik = re.sub(r'\D', '', i.a.get_text())
-		for j in range(0, len(cik)):
-			if cik[j] != '0':
-				return cik[j:]
+	span = soup.find('span', class_='companyName')
+	if span is None:
+		return None
+
+	cik = re.sub(r'\D', '', span.a.get_text())
+	for j in range(0, len(cik)):
+		if cik[j] != '0':
+			return cik[j:]
 
 def get_acc_no(soup):
 	tr = soup.find_all('tr')
 	for i in tr:
-		report_type = i.find_all('td', nowrap='nowrap')
-		for j in report_type:
-			if j.get_text() == '10-K':
-				return parse_acc_no(i.find('td', class_='small'))
+		report_type = i.find('a', id='interactiveDataBtn')
+		if report_type is not None:
+			return parse_acc_no(i.find('td', class_='small'))
 
 def parse_acc_no(acc_no):
 	acc = 'Acc-no: '
@@ -101,12 +113,10 @@ def parse_amount(amount):
 	return amount
 
 def is_income_statement(title):
-	if 'parenthetical' in title or 'comprehensive' in title:
+	if 'parenthetical' in title:
 		return False
 
-	keywords = []
-	keywords.append('operation')
-	keywords.append('income')
+	keywords = ['operation', 'income', 'earning', 'loss']
 	for word in keywords:
 		if word in title:
 			return True
@@ -116,22 +126,11 @@ def is_balance_sheet(title):
 	if 'parenthetical' in title:
 		return False
 
-	keywords = []
-	keywords.append('balance sheet')
-	keywords.append('financial position')
-	keywords.append('financial condition')
+	keywords = ['balance sheet', 'financial position', 'financial condition', 'condition', 'assets', 'liabilities']
 	for word in keywords:
 		if word in title:
 			return True
 	return False
 
 def is_cash_flow_statement(title):
-	if 'parenthetical' in title:
-		return False
-
-	keywords = []
-	keywords.append('cash flow')
-	for word in keywords:
-		if word in title:
-			return True
-	return False
+	return 'cash' in title and 'flow' in title and not 'parenthetical' in 'title'
