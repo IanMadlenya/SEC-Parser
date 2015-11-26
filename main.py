@@ -7,6 +7,7 @@ import time
 # print 'Quote:', stock.get_quote()
 # print 'Market Cap:', stock.get_market_cap()
 # print 'P/E Ratio:', stock.get_pe_ratio()
+# print 'P/B Ratio:', stock.get_pb_ratio()
 # print 'EBITDA:', stock.get_ebitda()
 # print 'FCF:', stock.get_fcf()
 

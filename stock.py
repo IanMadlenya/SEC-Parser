@@ -8,6 +8,7 @@ class Stock:
 		self.quote = None
 		self.market_cap = None
 		self.pe_ratio = None
+		self.pb_ratio = None
 		self.ebitda = None
 		self.fcf = None
 
@@ -27,6 +28,9 @@ class Stock:
 
 	def get_pe_ratio(self):
 		return Share(self.ticker).get_price_earnings_ratio() if self.pe_ratio is None else self.pe_ratio
+
+	def get_pb_ratio(self):
+		return Share(self.ticker).get_price_book() if self.pb_ratio is None else self.pb_ratio
 
 	def get_ebitda(self):
 		if self.ebitda is not None:
