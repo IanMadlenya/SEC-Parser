@@ -18,10 +18,14 @@ def parse_statement(statement, query, multiplier):
 			title = title.get('onclick')
 
 		numbers = entry.find_all('td', {'class':['nump', 'num']})
-		for item in range(0, len(query)):
-			if query[item] in title:
-				values[item] = 0 if not numbers else float(parse_amount(numbers[0].get_text())) * multiplier
-				break
+		for i in range(0, len(query)):
+			for j in range(0, len(query[i])):
+				if query[i][j] in title:
+					values[i] = 0 if not numbers else float(parse_amount(numbers[0].get_text())) * multiplier
+					break
+			else:
+				continue
+			break
 
 	return values
 
@@ -88,9 +92,9 @@ def get_cik_no(soup):
 		return None
 
 	cik = re.sub(r'\D', '', span.a.get_text())
-	for j in range(0, len(cik)):
-		if cik[j] != '0':
-			return cik[j:]
+	for i in range(0, len(cik)):
+		if cik[i] != '0':
+			return cik[i:]
 
 def get_acc_no(soup):
 	tr = soup.find_all('tr')

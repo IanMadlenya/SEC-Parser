@@ -50,9 +50,12 @@ class Stock:
 			self.balance_sheet = soup[1][0]
 			self.cash_flow_statement = soup[2][0]
 
-			a = parse_statement(self.income_statement, ['us-gaap_OperatingIncomeLoss\'', 'us-gaap_IncomeTaxExpenseBenefit\'', 'us-gaap_IncomeLossFromContinuingOperationsBeforeIncomeTaxes'], soup[0][1])
-			b = parse_statement(self.balance_sheet, ['us-gaap_AssetsCurrent\'', 'us-gaap_LiabilitiesCurrent\''], soup[1][1])
-			c = parse_statement(self.cash_flow_statement, ['us-gaap_PaymentsToAcquirePropertyPlantAndEquipment\''], soup[2][1])
+			a = parse_statement(self.income_statement, [['_OperatingIncomeLoss\''], ['_IncomeTaxExpenseBenefit\''], ['_IncomeLossFromContinuingOperationsBeforeIncomeTaxes'], ['_InterestExpense']], soup[0][1])
+			b = parse_statement(self.balance_sheet, [['_AssetsCurrent\''], ['_LiabilitiesCurrent\'']], soup[1][1])
+			c = parse_statement(self.cash_flow_statement, [['_PaymentsToAcquirePropertyPlantAndEquipment\'', '_PaymentsToAcquireProductiveAssets\'']], soup[2][1])
+
+			if a[0] is None:
+				a[0] = a[2] if a[3] is None else a[2] + a[3]
 		except ValueError:
 			return 'missing 10-k report'
 		except TypeError:
