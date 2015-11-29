@@ -21,7 +21,12 @@ def parse_statement(statement, query, multiplier):
 		for i in range(0, len(query)):
 			for j in range(0, len(query[i])):
 				if query[i][j] in title:
-					values[i] = 0 if not numbers else float(parse_amount(numbers[0].get_text())) * multiplier
+					if not numbers:
+						values[i] = 0
+					elif values[i] is None:
+						values[i] = float(parse_amount(numbers[0].get_text())) * multiplier
+					else:
+						values[i] += float(parse_amount(numbers[0].get_text())) * multiplier
 					break
 			else:
 				continue
@@ -71,12 +76,16 @@ def get_url(ticker):
 			for phrase in title:
 				if len(title) is not 1 and 'share' in phrase.lower():
 					continue
+
 				if 'thousand' in phrase.lower():
 					report[0] = (statement, 10**3)
+					break
 				elif 'million' in phrase.lower():
 					report[0] = (statement, 10**6)
+					break
 				elif 'billion' in phrase.lower():
 					report[0] = (statement, 10**9)
+					break
 				else:
 					report[0] = (statement, 1)
 		if report[1] is None and is_balance_sheet(title):
