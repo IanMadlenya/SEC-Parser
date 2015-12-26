@@ -1,10 +1,13 @@
 from yahoo_finance import Share
-from parser import *
+from bs4 import BeautifulSoup
+# from parser import *
 import sys
+import urllib
+import re
 
 class Stock:
 	def __init__(self, ticker):
-		self.ticker = ticker
+		self.ticker = ticker.rstrip().upper()
 		self.quote = None
 		self.market_cap = None
 		self.pe_ratio = None
@@ -44,31 +47,44 @@ class Stock:
 		if self.fcf is not None:
 			return self.fcf
 
-		try:
-			soup = get_statements(self.ticker)
-			self.income_statement = soup[0][0]
-			self.balance_sheet = soup[1][0]
-			self.cash_flow_statement = soup[2][0]
-
-			a = parse_statement(self.income_statement, [['_OperatingIncomeLoss'], ['_IncomeTaxExpenseBenefit'], ['_IncomeLossFromContinuingOperationsBeforeIncomeTaxes'], ['_InterestExpense'], ['_DepreciationAndAmortization', '_DepreciationDepletionAndAmortization']], soup[0][1])
-			b = parse_statement(self.balance_sheet, [['_AssetsCurrent'], ['_LiabilitiesCurrent\'']], soup[1][1])
-			c = parse_statement(self.cash_flow_statement, [['_DepreciationAndAmortization', '_DepreciationDepletionAndAmortization', '_DepreciationAmortizationAndAccretionNet', '_DepreciationAmortizationAndOther', '_OtherDepreciationAndAmortization'], ['_Depreciation'], ['_Amortization'], ['_PaymentsToAcquirePropertyPlantAndEquipment', '_PaymentsToAcquireProductiveAssets']], soup[2][1])
-
-			if a[0] is None:
-				a[0] = a[2] if a[3] is None else a[2] + a[3]
-			if a[4] is None:
-				a[4] = c[0] if c[0] is not None else (c[1] if c[1] is not None else 0) + (c[2] if c[2] is not None else 0)
-		except ValueError:
-			return 'missing 10-k report'
-		except TypeError:
-			return 'missing financial statement'
+		url = 'https://ycharts.com/companies/' + self.ticker + '/free_cash_flow'
+		soup = BeautifulSoup(urllib.urlopen(url).read(), 'lxml')
 
 		try:
-			# print a
-			# print b
-			# print c
-			
-			return a[0] * (1 - a[1] / a[2]) + a[4] - (b[0] - b[1]) - abs(c[3])
-		except TypeError:
+			fcf = soup.find('meta', content=re.compile('.*Free Cash Flow.*'))['content']
+			fcf = fcf[fcf.index('of ') + 3 : fcf.index('. ')]
+			return float(fcf[:-1]) * (10**6 if 'M' in fcf[-1] else 10**9)
+		except:
 			return None
-			# return 'missing data'
+
+		# if self.fcf is not None:
+		# 	return self.fcf
+
+		# try:
+		# 	soup = get_statements(self.ticker)
+		# 	self.income_statement = soup[0][0]
+		# 	self.balance_sheet = soup[1][0]
+		# 	self.cash_flow_statement = soup[2][0]
+
+		# 	a = parse_statement(self.income_statement, [['_OperatingIncomeLoss'], ['_IncofcfxExpenseBenefit'], ['_IncomeLossFromContinuingOperationsBeforeIncofcfxes'], ['_InterestExpense'], ['_DepreciationAndAmortization', '_DepreciationDepletionAndAmortization']], soup[0][1])
+		# 	b = parse_statement(self.balance_sheet, [['_AssetsCurrent'], ['_LiabilitiesCurrent\'']], soup[1][1])
+		# 	c = parse_statement(self.cash_flow_statement, [['_DepreciationAndAmortization', '_DepreciationDepletionAndAmortization', '_DepreciationAmortizationAndAccretionNet', '_DepreciationAmortizationAndOther', '_OtherDepreciationAndAmortization'], ['_Depreciation'], ['_Amortization'], ['_PaymentsToAcquirePropertyPlantAndEquipment', '_PaymentsToAcquireProductiveAssets']], soup[2][1])
+
+		# 	if a[0] is None:
+		# 		a[0] = a[2] if a[3] is None else a[2] + a[3]
+		# 	if a[4] is None:
+		# 		a[4] = c[0] if c[0] is not None else (c[1] if c[1] is not None else 0) + (c[2] if c[2] is not None else 0)
+		# except ValueError:
+		# 	return 'missing 10-k report'
+		# except TypeError:
+		# 	return 'missing financial statement'
+
+		# try:
+		# 	# print a
+		# 	# print b
+		# 	# print c
+			
+		# 	return a[0] * (1 - a[1] / a[2]) + a[4] - (b[0] - b[1]) - abs(c[3])
+		# except TypeError:
+		# 	return None
+		# 	# return 'missing data'
