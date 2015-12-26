@@ -1,7 +1,6 @@
 from yahoo_finance import Share
 from bs4 import BeautifulSoup
 # from parser import *
-import sys
 import urllib
 import re
 
@@ -10,6 +9,7 @@ class Stock:
 		self.ticker = ticker.rstrip().upper()
 		self.quote = None
 		self.market_cap = None
+		self.ev = None
 		self.pe_ratio = None
 		self.pb_ratio = None
 		self.ebitda = None
@@ -19,7 +19,10 @@ class Stock:
 		return self.ticker
 
 	def get_quote(self):
-		return Share(self.ticker).get_price() if self.quote is None else self.quote
+		if self.quote is not None:
+			return self.quote
+		self.quote = float(Share(self.ticker).get_price())
+		return self.quote
 
 	def get_market_cap(self):
 		if self.market_cap is not None:
@@ -27,13 +30,47 @@ class Stock:
 
 		market_cap = Share(self.ticker).get_market_cap()
 		if market_cap is not None:
-			return float(market_cap[:-1]) * (10**6 if 'M' in market_cap[-1] else 10**9)
+			self.market_cap = float(market_cap[:-1]) * (10**6 if 'M' in market_cap[-1] else 10**9)
+			return self.market_cap
+
+	def get_ev(self):
+		if self.ev is not None:
+			return self.ev
+
+		url = 'https://ycharts.com/companies/' + self.ticker + '/enterprise_value'
+		soup = BeautifulSoup(urllib.urlopen(url).read(), 'lxml')
+
+		try:
+			ev = soup.find('meta', content=re.compile('.*Enterprise Value.*'))['content']
+			ev = ev[ev.index('of ') + 3 : ev.index('. ')]
+			self.ev = float(ev[:-1]) * (10**6 if 'M' in ev[-1] else 10**9)
+			return self.ev
+		except:
+			return None
 
 	def get_pe_ratio(self):
-		return Share(self.ticker).get_price_earnings_ratio() if self.pe_ratio is None else self.pe_ratio
+		if self.pe_ratio is not None:
+			return self.pe_ratio
+
+		url = 'https://ycharts.com/companies/' + self.ticker + '/pe_ratio'
+		soup = BeautifulSoup(urllib.urlopen(url).read(), 'lxml')
+
+		try:
+			pe_ratio = soup.find('meta', content=re.compile('.*PE Ratio.*'))['content']
+			pe_ratio = pe_ratio[pe_ratio.index('of ') + 3 : pe_ratio.index('. ')]
+			self.pe_ratio = float(pe_ratio)
+			return self.pe_ratio
+		except:
+			return None
+
+		# self.pe_ratio = float(Share(self.ticker).get_price_earnings_ratio())
+		# return self.pe_ratio
 
 	def get_pb_ratio(self):
-		return Share(self.ticker).get_price_book() if self.pb_ratio is None else self.pb_ratio
+		if self.pb_ratio is not None:
+			return self.pb_ratio
+		self.pb_ratio = float(Share(self.ticker).get_price_book())
+		return self.pb_ratio
 
 	def get_ebitda(self):
 		if self.ebitda is not None:
@@ -41,7 +78,8 @@ class Stock:
 
 		ebitda = Share(self.ticker).get_ebitda()
 		if ebitda is not None:
-			return float(ebitda[:-1]) * (10**6 if 'M' in ebitda[-1] else 10**9)
+			self.ebitda = float(ebitda[:-1]) * (10**6 if 'M' in ebitda[-1] else 10**9)
+			return self.ebitda
 
 	def get_fcf(self):
 		if self.fcf is not None:
@@ -53,7 +91,8 @@ class Stock:
 		try:
 			fcf = soup.find('meta', content=re.compile('.*Free Cash Flow.*'))['content']
 			fcf = fcf[fcf.index('of ') + 3 : fcf.index('. ')]
-			return float(fcf[:-1]) * (10**6 if 'M' in fcf[-1] else 10**9)
+			self.fcf = float(fcf[:-1]) * (10**6 if 'M' in fcf[-1] else 10**9)
+			return self.fcf
 		except:
 			return None
 
